@@ -1,12 +1,20 @@
 import dotenv from "dotenv";
 dotenv.config();
 
+import path from "path";
+import { fileURLToPath } from "url";
 import express from "express";
 import { getAccessToken } from "./services/momo.js";
+import payRoutes from "./routes/pay.js";
 
 const app = express();
 
 app.use(express.json());
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+app.use(express.static(path.join(__dirname, "../public")));
 
 app.get("/env-check", (req, res) => {
   res.json({
@@ -30,6 +38,8 @@ app.get("/token-test", async (req, res) => {
     });
   }
 });
+
+app.use("/api", payRoutes);
 
 const PORT = process.env.PORT || 3000;
 

@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MoMo Payment Checkout</title>
+
+    <style>
+      * {
+        box-sizing: border-box;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial,
+          sans-serif;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #fff7d6, #ffffff);
+      }
+
+      .card {
+        width: 100%;
+        max-width: 440px;
+        background: #fff;
+        border-radius: 18px;
+        padding: 26px;
+        box-shadow: 0 12px 35px rgba(0, 0, 0, 0.08);
+      }
+
+      .header {
+        margin-bottom: 18px;
+      }
+
+      .title {
+        font-size: 22px;
+        font-weight: 700;
+        margin-bottom: 4px;
+      }
+
+      .subtitle {
+        font-size: 13px;
+        color: #777;
+      }
+
+      input {
+        width: 100%;
+        padding: 13px;
+        margin-top: 12px;
+        border: 1px solid #ddd;
+        border-radius: 10px;
+        outline: none;
+        transition: 0.2s;
+        font-size: 14px;
+      }
+
+      input:focus {
+        border-color: #ffcc00;
+        box-shadow: 0 0 0 3px rgba(255, 204, 0, 0.2);
+      }
+
+      button {
+        width: 100%;
+        margin-top: 16px;
+        padding: 13px;
+        border: none;
+        border-radius: 10px;
+        background: #ffcc00;
+        font-weight: 700;
+        font-size: 15px;
+        cursor: pointer;
+        transition: 0.2s;
+      }
+
+      button:hover {
+        transform: translateY(-1px);
+      }
+
+      button:disabled {
+        background: #eee;
+        cursor: not-allowed;
+      }
+
+      .status {
+        margin-top: 18px;
+        padding: 12px;
+        border-radius: 10px;
+        font-size: 14px;
+        display: none;
+      }
+
+      .pending {
+        background: #fff8dd;
+        color: #8a6d00;
+      }
+
+      .success {
+        background: #e7f9ee;
+        color: #0a7a2f;
+      }
+
+      .failed {
+        background: #ffe7e7;
+        color: #b00020;
+      }
+
+      .loader {
+        width: 14px;
+        height: 14px;
+        border: 2px solid #ccc;
+        border-top: 2px solid #ffcc00;
+        border-radius: 50%;
+        display: inline-block;
+        animation: spin 1s linear infinite;
+        margin-right: 8px;
+        vertical-align: middle;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .ref {
+        margin-top: 10px;
+        font-size: 12px;
+        color: #666;
+      }
+
+      .hint {
+        margin-top: 12px;
+        font-size: 12px;
+        color: #888;
+        text-align: center;
+      }
+
+      .footer {
+        margin-top: 22px;
+        text-align: center;
+        font-size: 12px;
+        color: #aaa;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="card">
+      <div class="header">
+        <div class="title">MTN MoMo Checkout</div>
+        <div class="subtitle">Secure mobile money payment gateway</div>
+      </div>
+
+      <input id="phone" placeholder="Phone number (2507XXXXXXX)" />
+      <input id="amount" placeholder="Amount (RWF)" />
+
+      <button id="payBtn" onclick="pay()">Pay Now</button>
+
+      <div id="statusBox" class="status"></div>
+
+      <div class="hint">
+        You will receive a payment prompt on your phone to approve the
+        transaction.
+      </div>
+
+      <div class="footer">Developed with ❤️ by <strong>Floris Ng</strong></div>
+    </div>
+
+    <script>
+      let referenceId = null;
+      let interval = null;
+
+      async function pay() {
+        const phone = document.getElementById("phone").value;
+        const amount = document.getElementById("amount").value;
+        const statusBox = document.getElementById("statusBox");
+        const btn = document.getElementById("payBtn");
+
+        btn.disabled = true;
+        btn.innerText = "Processing...";
+
+        showStatus(
+          "pending",
+          "<span class='loader'></span>Sending payment request...",
+        );
+
+        try {
+          const res = await fetch("/api/pay", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ phone, amount }),
+          });
+
+          const data = await res.json();
+          referenceId = data.referenceId;
+
+          showStatus(
+            "pending",
+            "<span class='loader'></span>Waiting for approval on your phone...",
+          );
+
+          startPolling();
+        } catch (err) {
+          showStatus("failed", "Payment request failed. Please try again.");
+          resetButton();
+        }
+      }
+
+      function startPolling() {
+        interval = setInterval(async () => {
+          const res = await fetch(`/api/status/${referenceId}`);
+          const data = await res.json();
+
+          if (data.status === "SUCCESSFUL") {
+            stopPolling();
+            showStatus("success", "Payment Successful ✅");
+            resetButton();
+          }
+
+          if (data.status === "FAILED") {
+            stopPolling();
+            showStatus("failed", "Payment Failed ❌");
+            resetButton();
+          }
+        }, 3000);
+      }
+
+      function stopPolling() {
+        clearInterval(interval);
+      }
+
+      function resetButton() {
+        const btn = document.getElementById("payBtn");
+        btn.disabled = false;
+        btn.innerText = "Pay Now";
+      }
+
+      function showStatus(type, message) {
+        const box = document.getElementById("statusBox");
+        box.style.display = "block";
+        box.className = "status " + type;
+        box.innerHTML = message;
+      }
+    </script>
+  </body>
+</html>
