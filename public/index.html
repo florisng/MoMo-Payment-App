@@ -205,11 +205,14 @@
         );
 
         try {
-          const res = await fetch("/api/pay", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ phone, amount }),
-          });
+          const res = await fetch(
+            "https://momo-payment-backend-dckb.onrender.com/api/pay",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ phone, amount }),
+            },
+          );
 
           const data = await res.json();
           referenceId = data.referenceId;
@@ -228,7 +231,9 @@
 
       function startPolling() {
         interval = setInterval(async () => {
-          const res = await fetch(`/api/status/${referenceId}`);
+          const res = await fetch(
+            `https://momo-payment-backend-dckb.onrender.com/api/status/${referenceId}`,
+          );
           const data = await res.json();
 
           if (data.status === "SUCCESSFUL") {

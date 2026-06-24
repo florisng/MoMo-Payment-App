@@ -6,9 +6,10 @@ import { fileURLToPath } from "url";
 import express from "express";
 import { getAccessToken } from "./services/momo.js";
 import payRoutes from "./routes/pay.js";
+import cors from "cors";
 
 const app = express();
-
+app.use(cors());
 app.use(express.json());
 
 const __filename = fileURLToPath(import.meta.url);
